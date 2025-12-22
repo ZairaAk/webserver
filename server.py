@@ -4,7 +4,7 @@ import json
 import datetime
 from urllib.parse import urlparse, parse_qs
 
-HOST= '0.0.0.0'
+HOST= '0.0.0.0' #this will allow external connections
 PORT = 8080
 
 database = []
@@ -61,7 +61,7 @@ def response(statuscode, body="",extra_headers="None"):
     return response
 #from here,the client has sent the request and now will organise it and work on that
 def parse(request_text):
-     parts= request_text.split("\r\n\r\n,1")
+     parts= request_text.split("\r\n\r\n",1)
      header=parts[0]
      body=parts[1]
 
@@ -100,52 +100,10 @@ def parse(request_text):
      }
 
 
-   #conn-recieves and sends http requests/responses(unique)-socket connected to client
+   #conn: recieves and sends http requests/responses(unique)-socket connected to client
    #addr: client address
 
    
-def handle_client(conn,addr): #trials and failures
-    global database,id
-
-    try:
-        raw=conn.recv(65536) #raw is a bytes obj
-        if not raw:
-              conn.close()
-              return 
-          
-    try:
-         request_text=raw.decode('utf-8')
-    except UnicodeDecodeError:
-         conn.sendall(response(400, "Cannot decode request"))
-         conn.close()
-         return
-    
-    try:
-         req=parse(request_text)
-    except ValueError as e:
-        conn.sendall(response(400, {"error": "Bad Request", "message": str(e)}))
-        conn.close()
-        return
-
-
-    method = req["method"]
-    raw_path = req["path"]
-    headers = req["headers"]
-    body = req["body"]   
-
-    if method == "POST":
-      if "content-length" not in headers:
-        conn.sendall(response(411, {"error": "Length Required"}))
-        conn.close()
-        return
-      
-    try:
-            length = int(headers["content-length"])
-    except ValueError:
-            conn.sendall(response(400, {"error": "Invalid Content-Length"}))
-            conn.close()
-            return
-    
 
 
     
