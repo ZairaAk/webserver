@@ -38,7 +38,7 @@ def convert(body):
      
     return str(body).encode('utf-8'), "text/plain; charset=utf-8"
 
-def response(statuscode, body="",extra_headers="None"):
+def response(statuscode, body="",extra_headers=None): #server->client
     bodycontent, content_type = convert(body)
 
     reason = statusline(statuscode)
@@ -60,8 +60,8 @@ def response(statuscode, body="",extra_headers="None"):
     response = (status_line + header_lines + "\r\n").encode('utf-8') + bodycontent
     return response
 #from here,the client has sent the request and now will organise it and work on that
-def parse(request_text):
-     parts= request_text.split("\r\n\r\n",1)
+def parse(request_text):  #parse:client->server
+     parts= request_text.split("\r\n\r\n",1) #(separator,maxsplit)
      header=parts[0]
      body=parts[1]
 
@@ -71,7 +71,7 @@ def parse(request_text):
      if len(lines) == 0:
         raise ValueError("Empty request")
      
-     requestline=lines[0]
+     requestline=lines[0] #METHOD PATH VERSION
      tokens = requestline.split()
      if len(tokens) != 3:
         raise ValueError("Malformed request line")
@@ -80,10 +80,10 @@ def parse(request_text):
      path=tokens[1]
      version=tokens[2]
 
-     headers={}
+     headers={} #parse header into dict
 
-     for l in lines[1:]:
-          if not l:
+     for l in lines[1:]: #skipping request line
+          if not l: #ignoring empty lines
                continue
           if ":" not in l:
                raise ValueError(f"Malformed header line: {l}")
@@ -102,6 +102,39 @@ def parse(request_text):
 
    #conn: recieves and sends http requests/responses(unique)-socket connected to client
    #addr: client address
+def handle_client(conn, addr):
+    try:
+        raw = conn.recv(65536)
+        if not raw:         
+            return
+
+        conn.sendall(response(200, "Hello from my server!"))
+      
+    except Exception:
+        conn.sendall(response(500, "Internal Server Error"))
+    
+    finally:    
+        conn.close()
+
+def start_server():
+    server=socket.socket(socket.AF_INET,socket.SOCK_STREAM) #1st socket=module,2nd=class
+    server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1) #1-enable, 0-disable
+
+    server.bind((HOST,PORT)) #why double bracks?? ---> bind accepts 1 arg so passing this as a tuple
+    server.listen(5) #can queue upto 5 pending connections
+
+    print(f"Server listening on {HOST}:{PORT}")
+
+    while True:
+        conn, addr = server.accept()
+        thread = threading.Thread(
+            target=handle_client,
+            args=(conn, addr)
+        )
+        thread.start()     
+
+if __name__ == "__main__": #prevents code from running when file is imported
+    start_server()
 
    
 
