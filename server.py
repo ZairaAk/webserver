@@ -5,7 +5,7 @@ import datetime
 from urllib.parse import urlparse, parse_qs
 
 HOST= '0.0.0.0' #this will allow external connections
-PORT = 8080
+PORT = 9999
 
 database = []
 id=1
@@ -103,17 +103,34 @@ def parse(request_text):  #parse:client->server
    #conn: recieves and sends http requests/responses(unique)-socket connected to client
    #addr: client address
 def handle_client(conn, addr):
+
     try:
         raw = conn.recv(65536)
         if not raw:         
             return
+                
+        try:
+            request_text =raw.decode("utf-8")
 
-        conn.sendall(response(200, "Hello from my server!"))
+        except UnicodeDecodeError:            
+            conn.sendall(response(400, "Cannot decode request"))          
+            return
+        
+        try:
+            req=parse(request_text)
+        except ValueError as e:
+            conn.sendall(response(400,str(e)))         
+            return
+        
+        conn.sendall(response(200, {
+            "method": req["method"],
+            "path": req["path"]
+        }))
       
     except Exception:
         conn.sendall(response(500, "Internal Server Error"))
-    
-    finally:    
+        
+    finally:
         conn.close()
 
 def start_server():
