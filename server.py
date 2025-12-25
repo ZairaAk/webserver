@@ -108,7 +108,7 @@ def handle_client(conn, addr):
         raw = conn.recv(65536)
         if not raw:         
             return
-                
+                        
         try:
             request_text =raw.decode("utf-8")
 
@@ -122,16 +122,20 @@ def handle_client(conn, addr):
             conn.sendall(response(400,str(e)))         
             return
         
-        conn.sendall(response(200, {
-            "method": req["method"],
-            "path": req["path"]
-        }))
-      
+        method= req["method"]
+        path= req["path"]
+
+        if method=="GET" and path == "/":
+            conn.sendall(response(200, "Welcome to my HTTP server"))
+        else:
+            conn.sendall(response(404, "Not Found"))
+   
     except Exception:
         conn.sendall(response(500, "Internal Server Error"))
-        
+
     finally:
-        conn.close()
+        conn.close()   
+ 
 
 def start_server():
     server=socket.socket(socket.AF_INET,socket.SOCK_STREAM) #1st socket=module,2nd=class
@@ -154,23 +158,3 @@ if __name__ == "__main__": #prevents code from running when file is imported
     start_server()
 
    
-
-
-    
-
-  
-           
-              
-
-
-         
-         
-
-          
-
- 
-
-
-     
-
-
