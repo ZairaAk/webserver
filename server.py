@@ -2,7 +2,7 @@ import socket
 import threading
 import json
 import datetime
-from urllib.parse import urlparse, parse_qs
+from urllib.parse import urlparse, parse_qs #urlparse: splits url into path and query,parse_qs:query to keyvalue pair
 
 HOST= '0.0.0.0' #this will allow external connections
 PORT = 9999
@@ -124,9 +124,37 @@ def handle_client(conn, addr):
         
         method= req["method"]
         path= req["path"]
+        parsed = urlparse(path)
 
-        if method=="GET" and path == "/":
+        if method=="GET" and parsed.path == "/":
             conn.sendall(response(200, "Welcome to my HTTP server"))
+        elif method=="GET" and parsed.path=="/echo":
+            query=parse_qs(parsed.query)
+            message = query.get("message", [""])[0]
+            conn.sendall(response(200, message))
+        elif method=="POST" and parsed.path=="/data":
+
+            headers=req["headers"]
+
+            if "content-length" not in headers:
+                conn.sendall(response(411, "Content-Length required"))
+                return
+
+            length = int(headers["content-length"])
+
+            body=req["body"][:length] #avoid extra junk and take upto user defined length
+
+            try:
+                payload = json.loads(body) #text → real Python data
+            except json.JSONDecodeError:
+                conn.sendall(response(400, "Invalid JSON"))
+                return
+
+            database.append(payload)
+
+            conn.sendall(response(201, payload))
+
+
         else:
             conn.sendall(response(404, "Not Found"))
    
