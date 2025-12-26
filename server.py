@@ -128,21 +128,85 @@ def handle_client(conn, addr):
 
         if method=="GET" and parsed.path == "/":
             conn.sendall(response(200, "Welcome to my HTTP server"))
+
         elif method=="GET" and parsed.path=="/echo":
             query=parse_qs(parsed.query)
             message = query.get("message", [""])[0]
             conn.sendall(response(200, message))
+
+        elif method == "GET" and parsed.path == "/data":
+            conn.sendall(response(200, database))
+
+        elif method == "GET" and parsed.path.startswith("/data/"):
+            id_part = parsed.path.split("/")[2]
+
+            try:
+                index = int(id_part)
+            except ValueError:
+                conn.sendall(response(400, "Invalid ID"))
+                return
+
+            if index < 0 or index >= len(database):
+                conn.sendall(response(404, "Not Found"))
+                return
+
+            conn.sendall(response(200, database[index]))
+
+        elif method == "PUT" and parsed.path.startswith("/data/"):
+            id_part = parsed.path.split("/")[2]
+
+            try:
+                index = int(id_part)
+            except ValueError:
+                conn.sendall(response(400, "Invalid ID"))
+                return
+
+            if index < 0 or index >= len(database):
+                conn.sendall(response(404, "Not Found"))
+                return
+
+            body = req["body"].strip()
+
+            try:
+                payload = json.loads(body)
+            except json.JSONDecodeError:
+                conn.sendall(response(400, "Invalid JSON"))
+                return
+
+            database[index] = payload
+            conn.sendall(response(200, payload))
+            
+
+        elif method == "DELETE" and parsed.path.startswith("/data/"):
+            id_part = parsed.path.split("/")[2]
+
+            try:
+                index = int(id_part)
+            except ValueError:
+                conn.sendall(response(400, "Invalid ID"))
+                return
+
+            if index < 0 or index >= len(database):
+                conn.sendall(response(404, "Not Found"))
+                return
+
+            deleted_item = database.pop(index)
+            conn.sendall(response(200, deleted_item))
+        
+    
         elif method=="POST" and parsed.path=="/data":
 
             headers=req["headers"]
-
             if "content-length" not in headers:
                 conn.sendall(response(411, "Content-Length required"))
                 return
-
+            
             length = int(headers["content-length"])
+            body = req["body"]
 
-            body=req["body"][:length] #avoid extra junk and take upto user defined length
+            while len(body.encode("utf-8")) < length:
+                body += conn.recv(65536).decode("utf-8", errors="ignore")
+
 
             try:
                 payload = json.loads(body) #text → real Python data
@@ -184,5 +248,4 @@ def start_server():
 
 if __name__ == "__main__": #prevents code from running when file is imported
     start_server()
-
-   
+ 
